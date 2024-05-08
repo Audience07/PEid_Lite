@@ -1,10 +1,11 @@
 #include "head.h"
 
-//´ò¿ªÎÄ¼ş£¬·ÖÅä»º³åÇø£¬·µ»ØÎÄ¼ş»º³åÇøÖ¸Õë
+//æ‰“å¼€æ–‡ä»¶ï¼Œåˆ†é…ç¼“å†²åŒºï¼Œè¿”å›æ–‡ä»¶ç¼“å†²åŒºæŒ‡é’ˆ
 LPVOID _OpenFile(const char* str) {
 	FILE* pf = fopen(str, "rb");
 	if (!pf) {
-		perror("´ò¿ªÎÄ¼şÊ§°Ü");
+		perror("æ‰“å¼€æ–‡ä»¶å¤±è´¥");
+  fclose (pf);
 		return NULL;
 	}
 	fseek(pf, 0, SEEK_END);
@@ -14,7 +15,10 @@ LPVOID _OpenFile(const char* str) {
 	LPVOID FileBuffer = (char*)malloc(FileSize);
 	fread(FileBuffer, 1, FileSize, pf);
 	if (!FileBuffer) {
-		printf("¶ÁÈ¡ÄÚ´æÊ§°Ü\n");
+		printf("è¯»å–å†…å­˜å¤±è´¥\n");
+  free(FileBuffer);
+  fclose(pf)
+  return NULL;
 	}
 	fclose(pf);
 	return FileBuffer;
@@ -23,23 +27,23 @@ LPVOID _OpenFile(const char* str) {
 
 
 
-//¶ÁÈ¡ÎÄ¼ş±êÊ¶£¬´æ´¢µ½FileSign½á¹¹ÖĞ£¬·µ»Ø½Ú±íÊıÁ¿
+//è¯»å–æ–‡ä»¶æ ‡è¯†ï¼Œå­˜å‚¨åˆ°FileSignç»“æ„ä¸­ï¼Œè¿”å›èŠ‚è¡¨æ•°é‡
 size_t _ReadData(LPVOID FileBuffer, struct FileSign* FileSign) {
 	FileSign->MZHeader = *(WORD*)((char*)FileBuffer);
 	if (FileSign->MZHeader != 0x5a4d) {
 		return 0;
 	}
-	//¶¨Î»Ö¸Õë
+	//å®šä½æŒ‡é’ˆ
 	FileSign->NTHeader = (char*)((char*)FileBuffer + (*(DWORD*)((char*)FileBuffer + 0x3C)));
 	FileSign->PEHeader = (char*)((char*)FileSign->NTHeader + 0x4);
 	FileSign->OptionalHeader = (char*)((char*)FileSign->NTHeader + 0x18);
 
-	//PEÍ·
+	//PEå¤´
 	FileSign->Machine = *(WORD*)((char*)FileSign->PEHeader);
 	FileSign->NumberOfSection = *(WORD*)((char*)FileSign->PEHeader + 0x2);
 	FileSign->SizeOfOptionHeader = *(WORD*)((char*)FileSign->PEHeader + 0x10);
 
-	//¿ÉÑ¡PEÍ·
+	//å¯é€‰PEå¤´
 	FileSign->Magic = *(WORD*)((char*)FileSign->OptionalHeader);
 	FileSign->EntryPoint = *(DWORD*)((char*)FileSign->OptionalHeader + 0x10);
 	FileSign->ImageBase = *(DWORD*)((char*)FileSign->OptionalHeader + 0x1C);
@@ -48,11 +52,11 @@ size_t _ReadData(LPVOID FileBuffer, struct FileSign* FileSign) {
 	FileSign->SizeOfImage = *(DWORD*)((char*)FileSign->OptionalHeader + 0x38);
 	FileSign->SizeOfHeaders = *(DWORD*)((char*)FileSign->OptionalHeader + 0x3C);
 
-	//·µ»Ø½Ú±íÊıÁ¿
+	//è¿”å›èŠ‚è¡¨æ•°é‡
 	return 1;
 }
 
-//¶ÁÈ¡½Ú±í¹Ø¼ü×Ö¶Î
+//è¯»å–èŠ‚è¡¨å…³é”®å­—æ®µ
 void _ReadSectionTable(struct SectionTable* pSectionTable,struct FileSign* pFileSign) {
 	for (int i = 0; i < pFileSign->NumberOfSection;i++, pSectionTable++) {
 		pSectionTable->Point = (char*)((char*)pFileSign->OptionalHeader + pFileSign->SizeOfOptionHeader+(i*0x28));
@@ -65,17 +69,17 @@ void _ReadSectionTable(struct SectionTable* pSectionTable,struct FileSign* pFile
 	}
 }
 
-//Êä³öPE½á¹¹¹Ø¼ü×Ö¶Î
+//è¾“å‡ºPEç»“æ„å…³é”®å­—æ®µ
 void _OutputPEData(struct FileSign* pFileSign,struct SectionTable* pSectionTable) {
 	printf("**********************************************************\n");
-	printf("PEÍ·:\n\n");
-	//Êä³öPEÍ·
+	printf("PEå¤´:\n\n");
+	//è¾“å‡ºPEå¤´
 	printf("Machine:0x%x\n", pFileSign->Machine);
 	printf("NumberOfSection:0x%x\n", pFileSign->NumberOfSection);
 	printf("SizeOfOptionHeader:0x%x\n\n", pFileSign->SizeOfOptionHeader);
 
-	//Êä³ö¿ÉÑ¡PEÍ·
-	printf("¿ÉÑ¡PEÍ·:\n\n");
+	//è¾“å‡ºå¯é€‰PEå¤´
+	printf("å¯é€‰PEå¤´:\n\n");
 	printf("Magic:0x%x\n", pFileSign->Magic);
 	printf("EntryPoint:0x%x\n", pFileSign->EntryPoint);
 	printf("ImageBase:0x%x\n", pFileSign->ImageBase);
@@ -84,7 +88,7 @@ void _OutputPEData(struct FileSign* pFileSign,struct SectionTable* pSectionTable
 	printf("SizeOfImage:0x%x\n", pFileSign->SizeOfImage);
 	printf("SizeOfHeaders:0x%x\n\n", pFileSign->SizeOfHeaders);
 
-	printf("½Ú±í:\n\n");
+	printf("èŠ‚è¡¨:\n\n");
 	for (int i = 0; i < pFileSign->NumberOfSection; i++) {
 		printf("name:%s\n", pSectionTable->name);
 		printf("VirtualSize:0x%x\n", pSectionTable->VirtualSize);
