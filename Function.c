@@ -1,24 +1,32 @@
 #include "head.h"
 
-//æ‰“å¼€æ–‡ä»¶ï¼Œåˆ†é…ç¼“å†²åŒºï¼Œè¿”å›æ–‡ä»¶ç¼“å†²åŒºæŒ‡é’ˆ
-LPVOID _OpenFile(const char* str) {
+//´ò¿ªÎÄ¼ş£¬·ÖÅä»º³åÇø£¬·µ»ØÎÄ¼ş»º³åÇøÖ¸Õë
+LPVOID _OpenFile(IN const char* str) {
 	FILE* pf = fopen(str, "rb");
 	if (!pf) {
-		perror("æ‰“å¼€æ–‡ä»¶å¤±è´¥");
-  fclose (pf);
+		perror("´ò¿ªÎÄ¼şÊ§°Ü");
 		return NULL;
 	}
+	//»ñÈ¡ÎÄ¼ş´óĞ¡
 	fseek(pf, 0, SEEK_END);
 	DWORD FileSize = ftell(pf);
 	fseek(pf, 0, SEEK_SET);
 
+	//·ÖÅäÄÚ´æ
 	LPVOID FileBuffer = (char*)malloc(FileSize);
+	if (!FileBuffer) {
+		printf("ÄÚ´æ·ÖÅäÊ§°Ü\n");
+		fclose(pf);
+		return NULL;
+	}
+
+	//½«ÄÚ´æ¶ÁÈ¡µ½»º³åÇø
 	fread(FileBuffer, 1, FileSize, pf);
 	if (!FileBuffer) {
-		printf("è¯»å–å†…å­˜å¤±è´¥\n");
-  free(FileBuffer);
-  fclose(pf)
-  return NULL;
+		printf("¶ÁÈ¡ÄÚ´æÊ§°Ü\n");
+		free(FileBuffer);
+		fclose(pf);
+		return NULL;
 	}
 	fclose(pf);
 	return FileBuffer;
@@ -27,23 +35,23 @@ LPVOID _OpenFile(const char* str) {
 
 
 
-//è¯»å–æ–‡ä»¶æ ‡è¯†ï¼Œå­˜å‚¨åˆ°FileSignç»“æ„ä¸­ï¼Œè¿”å›èŠ‚è¡¨æ•°é‡
-size_t _ReadData(LPVOID FileBuffer, struct FileSign* FileSign) {
+//¶ÁÈ¡ÎÄ¼ş±êÊ¶£¬´æ´¢µ½FileSign½á¹¹ÖĞ£¬·µ»Ø½Ú±íÊıÁ¿
+size_t _ReadData(IN LPVOID FileBuffer, OUT struct FileSign* FileSign) {
 	FileSign->MZHeader = *(WORD*)((char*)FileBuffer);
 	if (FileSign->MZHeader != 0x5a4d) {
 		return 0;
 	}
-	//å®šä½æŒ‡é’ˆ
+	//Æ«ÒÆÖ¸Õë
 	FileSign->NTHeader = (char*)((char*)FileBuffer + (*(DWORD*)((char*)FileBuffer + 0x3C)));
 	FileSign->PEHeader = (char*)((char*)FileSign->NTHeader + 0x4);
 	FileSign->OptionalHeader = (char*)((char*)FileSign->NTHeader + 0x18);
 
-	//PEå¤´
+	//PEÍ·
 	FileSign->Machine = *(WORD*)((char*)FileSign->PEHeader);
 	FileSign->NumberOfSection = *(WORD*)((char*)FileSign->PEHeader + 0x2);
 	FileSign->SizeOfOptionHeader = *(WORD*)((char*)FileSign->PEHeader + 0x10);
 
-	//å¯é€‰PEå¤´
+	//¿ÉÑ¡PEÍ·
 	FileSign->Magic = *(WORD*)((char*)FileSign->OptionalHeader);
 	FileSign->EntryPoint = *(DWORD*)((char*)FileSign->OptionalHeader + 0x10);
 	FileSign->ImageBase = *(DWORD*)((char*)FileSign->OptionalHeader + 0x1C);
@@ -52,12 +60,12 @@ size_t _ReadData(LPVOID FileBuffer, struct FileSign* FileSign) {
 	FileSign->SizeOfImage = *(DWORD*)((char*)FileSign->OptionalHeader + 0x38);
 	FileSign->SizeOfHeaders = *(DWORD*)((char*)FileSign->OptionalHeader + 0x3C);
 
-	//è¿”å›èŠ‚è¡¨æ•°é‡
+	//·µ»Ø½Ú±íÊıÁ¿
 	return 1;
 }
 
-//è¯»å–èŠ‚è¡¨å…³é”®å­—æ®µ
-void _ReadSectionTable(struct SectionTable* pSectionTable,struct FileSign* pFileSign) {
+//¶ÁÈ¡½Ú±í¹Ø¼ü×Ö¶Î
+void _ReadSectionTable(OUT struct SectionTable* pSectionTable, IN struct FileSign* pFileSign) {
 	for (int i = 0; i < pFileSign->NumberOfSection;i++, pSectionTable++) {
 		pSectionTable->Point = (char*)((char*)pFileSign->OptionalHeader + pFileSign->SizeOfOptionHeader+(i*0x28));
 		memcpy(pSectionTable->name, pSectionTable->Point, 8);
@@ -69,17 +77,17 @@ void _ReadSectionTable(struct SectionTable* pSectionTable,struct FileSign* pFile
 	}
 }
 
-//è¾“å‡ºPEç»“æ„å…³é”®å­—æ®µ
-void _OutputPEData(struct FileSign* pFileSign,struct SectionTable* pSectionTable) {
+//Êä³öPE½á¹¹¹Ø¼ü×Ö¶Î
+void _OutputPEData(IN struct FileSign* pFileSign, IN struct SectionTable* pSectionTable) {
 	printf("**********************************************************\n");
-	printf("PEå¤´:\n\n");
-	//è¾“å‡ºPEå¤´
+	printf("PEÍ·:\n\n");
+	//Êä³öPEÍ·
 	printf("Machine:0x%x\n", pFileSign->Machine);
 	printf("NumberOfSection:0x%x\n", pFileSign->NumberOfSection);
 	printf("SizeOfOptionHeader:0x%x\n\n", pFileSign->SizeOfOptionHeader);
 
-	//è¾“å‡ºå¯é€‰PEå¤´
-	printf("å¯é€‰PEå¤´:\n\n");
+	//Êä³ö¿ÉÑ¡PEÍ·
+	printf("¿ÉÑ¡PEÍ·:\n\n");
 	printf("Magic:0x%x\n", pFileSign->Magic);
 	printf("EntryPoint:0x%x\n", pFileSign->EntryPoint);
 	printf("ImageBase:0x%x\n", pFileSign->ImageBase);
@@ -88,7 +96,7 @@ void _OutputPEData(struct FileSign* pFileSign,struct SectionTable* pSectionTable
 	printf("SizeOfImage:0x%x\n", pFileSign->SizeOfImage);
 	printf("SizeOfHeaders:0x%x\n\n", pFileSign->SizeOfHeaders);
 
-	printf("èŠ‚è¡¨:\n\n");
+	printf("½Ú±í:\n\n");
 	for (int i = 0; i < pFileSign->NumberOfSection; i++) {
 		printf("name:%s\n", pSectionTable->name);
 		printf("VirtualSize:0x%x\n", pSectionTable->VirtualSize);

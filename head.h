@@ -5,10 +5,14 @@
 #include <Windows.h>
 
 
-size_t _ReadData(LPVOID FileBuffer, struct FileSign* FileSign);
-LPVOID _OpenFile(const char* str);
-void _ReadSectionTable(struct SectionTable* pSectionTable);
-void _OutputPEData(struct FileSign*, struct SectionTable*);
+//打开文件并分配缓冲区，返回文件缓冲区指针
+LPVOID _OpenFile(IN const char* str);
+//读取数据，失败返回0,成功返回1
+size_t _ReadData(IN LPVOID FileBuffer, OUT struct FileSign* FileSign);
+//读取节表数据，存储到pSectionTable结构体中
+void _ReadSectionTable(OUT struct SectionTable* pSectionTable, IN struct FileSign* pFileSign);
+//输出读取的内容
+void _OutputPEData(IN struct FileSign* pFileSign, IN struct SectionTable* pSectionTable);
 
 
 //PE，可选PE头
